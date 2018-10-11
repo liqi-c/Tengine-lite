@@ -1,0 +1,7 @@
+*.bak
+si/
+build/
+.*
+!.gitignore
+*.log
+makefile.config
