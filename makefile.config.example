@@ -1,1 +1,35 @@
+# if set, all functions and variables are exported when building dynamic library
 CONFIG_UNIT_TEST=y
+
+# set the version postfix string
+CONFIG_VERSION_POSTFIX="trial"
+
+# set the optimization flags
+# CONFIG_OPT_CFLAGS=O2
+
+# enable tengine serializer
+CONFIG_TENGINE_SERIALIZER=y
+
+# enable tiny graph serializer
+# CONFIG_TINY_SERIALIZER=y
+
+# enable HCL backend op implementation
+CONFIG_HCL_BACKEND=y
+
+# enable CMSIS backend op iplementation
+# CONFIG_CMSIS_BACKEND=y
+
+# build for cortex_M
+# CONFIG_ARCH_CORTEX_M=y
+
+# disable the op parameter setting
+CONFIG_DISABLE_PARAM_ACCESS=y
+
+# enable mem stat 
+CONFIG_MEM_STAT=y
+
+# enable internal allocator, a buddy mem allocator
+CONFIG_INTERN_ALLOCATOR=y
+
+# enable internal buddy mem initialization example
+CONFIG_INTERN_ALLOCATOR_INIT=y

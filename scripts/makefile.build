@@ -20,6 +20,7 @@ obj-y:=
 subdir-y:=
 
 include $(MAKEFILE_CONFIG)
+include $(OP_CONFIG)
 include Makefile
 
 
@@ -29,11 +30,20 @@ cur_objs:= $(filter-out %/, $(obj-y))
 dep_files += $(foreach f,$(cur_objs),.$(f).d) 
 dep_files += $(foreach f,$(bin-obj-y),.$(f).d) 
 dep_files += $(foreach f,$(so-obj-y),.$(f).d) 
+#sub-obj-y is the object files for composed object (defined in gen-obj-y)
+dep_files += $(foreach f,$(sub-obj-y),.$(f).d) 
 
 
 subdir-y=$(patsubst %/,%,$(filter %/, $(obj-y)))
 
-subdir_objs:= $(foreach d,$(subdir-y),$(d)/built-in.o) 
+subdir_built_in_objs:= $(foreach d,$(subdir-y),$(d)/built-in.o) 
+
+sub_gen_objs+=$(filter %.gen, $(obj-y))
+sub_gen_objs+=$(filter %.gen, $(bin-obj-y))
+
+generated_objs=$(sub_gen_objs:.gen=)
+
+subdir_objs:= $(subdir_built_in_objs)  $(generated_objs)
 
 BUILT_IN_OBJ=$(BUILD_DIR)/built-in.o
 
@@ -48,16 +58,19 @@ endif
 
 prebuilt_objs=$(prebuilt-obj-y)
 
-#real_subdir_built_in=$(foreach f, $(subdir_objs), $(wildcard $(f)) )
-real_subdir_built_in=$(subdir_objs)
-real_built_in_objs=$(real_subdir_built_in) $(curdir_objs) $(prebuilt_objs)
+real_built_in_objs= $(subdir_objs) $(curdir_objs) $(prebuilt_objs)
+
+cur_bin_objs=$(filter-out %.gen, $(bin-obj-y))
 
 #add BUILD_DIR PREFIX
 curdir_objs:=$(addprefix $(BUILD_DIR)/, $(cur_objs))
 subdir_objs:=$(addprefix $(BUILD_DIR)/, $(subdir_objs))
 curdir_deps:=$(addprefix $(BUILD_DIR)/,$(dep_files))
-curdir_bin_objs:=$(addprefix $(BUILD_DIR)/,$(bin-obj-y))
+curdir_bin_objs:=$(addprefix $(BUILD_DIR)/,$(cur_bin_objs))
 curdir_so_objs:=$(addprefix $(BUILD_DIR)/,$(so-obj-y))
+
+curdir_gen_obj:=$(addprefix $(BUILD_DIR)/,$(gen-obj-y))
+curdir_sub_objs:=$(addprefix $(BUILD_DIR)/,$(sub-obj-y))
 
 
 ifneq ($(MAKECMDGOALS),clean)
@@ -67,26 +80,38 @@ endif
 PHONY += $(subdir-y)
 
 
-default_build_target: $(subdir-y) $(BUILT_IN_OBJ)  $(curdir_bin_objs) $(curdir_so_objs)
+default_build_target: $(subdir-y) $(BUILT_IN_OBJ)  $(curdir_bin_objs) $(curdir_so_objs) $(curdir_gen_obj)
 
 $(subdir-y):
 	@$(MAKE) -C $@ -f $(REALNAME) $(MAKECMDGOALS) BUILD_DIR=$(BUILD_DIR)/$@
 
+ifneq ($(curdir_gen_obj),)
+$(curdir_gen_obj): $(curdir_sub_objs)
+	$(BUILT_IN_LD) -r -o $@ $^
+	@echo $(BUILT_IN_LD) -r -o $@ $^
+endif
+
 ifneq ($(strip $(real_built_in_objs)),)
 
 ifneq ($(subdir_objs),)
-$(subdir_objs): $(subdir-y);
+$(subdir_objs): $(subdir-y)
 endif
 
+
+
 $(BUILT_IN_OBJ): $(real_built_in_objs) 
-	@echo $(BUILT_IN_LD) -r -o $@  $(real_built_in_objs); \
-               $(BUILT_IN_LD) -r -o $@ $(real_built_in_objs);
+	@for file in $? ; do if [  -f $$file  ] ; then \
+     NEED_BUILD=true; break; fi; done; \
+    if [ $$NEED_BUILD ]; then \
+    echo "$(BUILT_IN_LD) -r -o $@  $(wildcard $(real_built_in_objs))"; \
+    $(BUILT_IN_LD) -r -o $@ $(wildcard $(real_built_in_objs)); fi;
 else
 $(BUILT_IN_OBJ):
+
 endif
 
 clean::  $(subdir-y)
-	@rm -rf $(curdir_objs) $(BUILT_IN_OBJ) $(curdir_deps) $(curdir_bin_objs) $(curdir_so_objs) $(final_asm_srcs)
+	@rm -rf $(curdir_objs) $(BUILT_IN_OBJ) $(curdir_deps) $(curdir_bin_objs) $(curdir_so_objs) $(final_asm_srcs) $(curdir_gen_obj) $(curdir_sub_objs)
 		
 
 build: default

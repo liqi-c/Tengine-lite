@@ -1,5 +1,8 @@
-#CROSS_COMPILE=aarch64-linux-gnu-
-SYSROOT:=$(shell pwd)/sysroot/ubuntu_rootfs
+MAKEFILE_CONFIG=$(shell pwd)/makefile.config
+OP_CONFIG=$(shell pwd)/op.config
+
+include $(MAKEFILE_CONFIG)
+include $(OP_CONFIG)
 
 ifneq ($(CROSS_COMPILE),)
    SYSROOT_FLAGS:=--sysroot=$(SYSROOT) 
@@ -17,22 +20,17 @@ BUILT_IN_LD=$(CROSS_COMPILE)ld
 GIT_COMMIT_ID=$(shell git rev-parse HEAD)
 
 COMMON_CFLAGS+=-Wno-ignored-attributes -Werror
-COMMON_CFLAGS+=-I$(shell pwd)/include -g -Wall
+COMMON_CFLAGS+=-I$(shell pwd)/include -g  -Wall
 
 GIT_COMMIT_ID=$(shell git rev-parse HEAD)
 COMMON_CFLAGS+=-DGIT_COMMIT_ID=\"$(GIT_COMMIT_ID)\"
 
-COMMON_CFLAGS+=-DCONFIG_MT_SUPPORT -fPIC
-COMMON_CFLAGS+=-DCL_USE_DEPRECATED_OPENCL_1_2_APIS
+COMMON_CFLAGS+=-fPIC
 
 export CC CXX CFLAGS BUILT_IN_LD LD LDFLAGS CXXFLAGS COMMON_CFLAGS 
 export GIT_COMMIT_ID
+export MAKEFILE_CONFIG OP_CONFIG
 
-MAKEFILE_CONFIG=$(shell pwd)/makefile.config
-
-export MAKEFILE_CONFIG
-
-include $(MAKEFILE_CONFIG)
 
 MAKEBUILD=$(shell pwd)/scripts/makefile.build
 
@@ -59,7 +57,12 @@ ifeq ($(CONFIG_ARCH_ARM32),y)
 endif
 
 ifneq ($(CONFIG_OPT_CFLAGS),)
-    export CONFIG_OPT_CFLAGS
+    COMMON_CFLAGS+=-$(CONFIG_OPT_CFLAGS)
+endif
+
+ifeq ($(CONFIG_HCL_BACKEND),y)
+    export HCL_ROOT=$(shell pwd)/3rd/hcl
+    LIB_LDFLAGS+=-Wl,-rpath=$(HCL_ROOT)/lib -Wl,-rpath-link=$(HCL_ROOT)/lib -L$(HCL_ROOT)/lib -lhcl  
 endif
 
 SUB_DIRS=$(LIB_SUB_DIRS) $(APP_SUB_DIRS)
@@ -77,7 +80,7 @@ clean: $(SUB_DIRS)
 install: $(APP_SUB_DIRS)
 	@mkdir -p $(INSTALL_DIR)/include $(INSTALL_DIR)/lib
 
-Makefile : $(MAKEFILE_CONFIG)
+Makefile : $(MAKEFILE_CONFIG) $(OP_CONFIG)
 	@touch Makefile
 	@$(MAKE) clean
 

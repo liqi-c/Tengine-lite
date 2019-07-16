@@ -5,3 +5,7 @@ build/
 !.gitignore
 *.log
 makefile.config
+op.config
+*.so
+*.a
+*.o
